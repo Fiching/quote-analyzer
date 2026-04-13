@@ -111,9 +111,17 @@
     <div class="section-label">Quote Request</div>
     <div class="input-box">
       <textarea id="quote-input" placeholder="Paste the quote request here...&#10;&#10;Example: 10 ea 3/4x1/2 fs thrd bushing, 6 ea 1/2 close blk nipples, 4 ea 2 fs 90 ell"></textarea>
+      <div id="file-preview" style="display:none;padding:8px 14px;border-top:1px solid var(--border);background:var(--surface2);font-size:11px;color:var(--muted);display:none;align-items:center;gap:8px">
+        <span id="file-name"></span>
+        <button id="remove-file-btn" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;padding:0 4px">✕</button>
+      </div>
       <div class="input-footer">
         <span id="char-count">0 characters &nbsp;&middot;&nbsp; <span style="color:#333">Alt+Enter to analyze</span></span>
-        <div style="display:flex;gap:8px">
+        <div style="display:flex;gap:8px;align-items:center">
+          <label id="upload-btn" title="Upload PDF or image" style="cursor:pointer;background:transparent;border:1px solid var(--border);color:var(--muted);font-family:var(--font);font-size:12px;padding:7px 12px;border-radius:7px;transition:all .15s;white-space:nowrap">
+            &#128206; Upload
+            <input type="file" id="file-input" accept=".pdf,.png,.jpg,.jpeg,.webp" style="display:none">
+          </label>
           <button class="btn ghost" id="clear-btn">Clear</button>
           <button class="btn primary" id="analyze-btn">Analyze Quote &rarr;</button>
         </div>
@@ -257,6 +265,34 @@ const exCountLabel   = document.getElementById('ex-count-label');
 const clearExBtn     = document.getElementById('clear-ex-btn');
 const toast          = document.getElementById('toast');
 
+// File upload state
+let currentFile = null;
+let currentFileData = null;
+
+const fileInput = document.getElementById('file-input');
+const filePreview = document.getElementById('file-preview');
+const fileName = document.getElementById('file-name');
+const removeFileBtn = document.getElementById('remove-file-btn');
+
+fileInput.addEventListener('change', async () => {
+  const file = fileInput.files[0];
+  if (!file) return;
+  currentFile = file;
+  fileName.textContent = file.name + ' (' + (file.size/1024).toFixed(1) + ' KB)';
+  filePreview.style.display = 'flex';
+  // Read as base64
+  const reader = new FileReader();
+  reader.onload = e => { currentFileData = e.target.result.split(',')[1]; };
+  reader.readAsDataURL(file);
+});
+
+removeFileBtn.addEventListener('click', () => {
+  currentFile = null;
+  currentFileData = null;
+  fileInput.value = '';
+  filePreview.style.display = 'none';
+});
+
 // Init
 Promise.all([
   fetch('/api/catalog').then(r=>r.json()).then(d=>{CATALOG=d.catalog||'';}).catch(()=>{}),
@@ -395,12 +431,8 @@ async function analyze() {
     }
 
     lastResult = fullText.trim();
+    streamRaw.style.color = '';
     streamRaw.classList.remove('cursor');
-    // Prepend any NEED MORE INFO rows from pre-validation
-    if (needInfoRows.length > 0) {
-      const needInfoText = needInfoRows.map(r => r.qty+'|'+r.pn+'|'+r.desc).join('\n');
-      lastResult = needInfoText + (lastResult ? '\n' + lastResult : '');
-    }
     await renderTable(lastResult);
     feedbackBar.classList.add('visible');
 
