@@ -22,7 +22,7 @@ from datetime import timedelta
 PASSWORD   = os.environ.get("APP_PASSWORD", "changeme123")
 SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key-change-in-production")
 API_KEY    = os.environ.get("ANTHROPIC_API_KEY", "")
-MODEL      = "claude-haiku-4-5-20251001"   # fast + cheap, perfect for this task
+MODEL      = "claude-haiku-4-5"   # fast + cheap, perfect for this task
 PORT       = int(os.environ.get("PORT", 5000))
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -87,6 +87,13 @@ def catalog():
 @app.route("/api/patterns")
 def patterns():
     return jsonify({"patterns": load_patterns()})
+
+
+@app.route("/api/debug")
+def debug():
+    key = API_KEY
+    masked = key[:12] + "..." + key[-4:] if len(key) > 16 else "NOT SET"
+    return jsonify({"api_key_set": bool(API_KEY), "api_key_preview": masked, "model": MODEL})
 
 
 @app.route("/api/analyze", methods=["POST"])
