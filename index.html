@@ -55,6 +55,17 @@
   .td-pn{color:var(--amber);white-space:nowrap}
   .td-pn.need-info{color:var(--red)}
   .td-pn.not-found{color:var(--muted)}
+  .td-pn.estimated{color:var(--amber)}
+  .td-pn.need-info{color:var(--red)}
+  .row-estimated{background:rgba(232,169,69,.07)!important}
+  .row-estimated:hover td{background:rgba(232,169,69,.12)!important}
+  .row-need-info{background:rgba(224,82,82,.07)!important}
+  .row-need-info:hover td{background:rgba(224,82,82,.12)!important}
+  .badge{font-size:9px;padding:2px 6px;border-radius:4px;margin-left:6px;vertical-align:middle;font-family:var(--font);letter-spacing:.05em}
+  .badge-est{background:rgba(232,169,69,.2);color:var(--amber);border:1px solid rgba(232,169,69,.4)}
+  .badge-info{background:rgba(224,82,82,.2);color:var(--red);border:1px solid rgba(224,82,82,.4)}
+  .badge-ok{background:rgba(62,207,142,.15);color:var(--green);border:1px solid rgba(62,207,142,.3)}
+  #legend{display:flex;gap:14px;padding:8px 16px;border-bottom:1px solid var(--border);background:var(--surface2);font-size:11px;color:var(--muted);flex-wrap:wrap}
   #feedback-bar{display:none;padding:10px 14px;border-top:1px solid var(--border);background:var(--surface2);gap:8px;align-items:center;flex-wrap:wrap}
   #feedback-bar.visible{display:flex}
   #feedback-label{font-size:11px;color:var(--muted)}
@@ -121,6 +132,11 @@
           <button class="btn ghost" id="new-btn" style="font-size:11px;padding:5px 10px">New quote</button>
         </div>
       </div>
+      <div id="legend" style="display:none">
+        <span><span class="badge badge-ok">CONFIRMED</span> Exact catalog match</span>
+        <span><span class="badge badge-est">ESTIMATED</span> Best guess — verify before ordering</span>
+        <span><span class="badge badge-info">NEED INFO</span> Missing required details</span>
+      </div>
       <div>
         <div id="stream-raw"></div>
         <table id="parts-table" style="display:none">
@@ -177,12 +193,26 @@ QTY|PART_NUMBER|DESCRIPTION
 One line per item. Nothing else. No markdown, no preamble, no notes.
 
 CRITICAL RULES:
-- Use ONLY part numbers from the catalog — never invent one
 - Return ONLY items explicitly mentioned in the quote
 - If quantity not specified, default to 1
-- If required information is missing output: QTY|NEED MORE INFO|what is missing
-- If part cannot be matched but all info present output: QTY|NOT FOUND|customer description
-- Ignore any parts starting with SP-`;
+- If required information is missing output: QTY|NEED MORE INFO|exactly what is missing
+- If you find an exact catalog match, use that part number
+- If you cannot find an exact match but can make a best guess, prefix the part number with EST: (e.g. EST:FST9K)
+- If no reasonable match exists output: QTY|NOT FOUND|customer description
+- Ignore any parts starting with SP-
+
+PART NUMBER STRUCTURE (use this to validate your answers):
+FST = Forged Steel Threaded 3000# | FSS = Forged Steel Socket Weld 3000# | FS6 = Forged Steel SW 6000#
+Size codes: A=1/8 B=1/4 C=3/8 D=1/2 F=3/4 G=1 H=1-1/4 J=1-1/2 K=2 L=2-1/2 M=3 N=3-1/2 P=4 U=6
+Fitting codes after connection: 9=90ELL 4=45ELL T=TEE C=COUP B=BUSH R=REDCOUP CAP=CAP SSU=UNION HC=HALFCOUP
+BXSN=Black XH Seamless Nipple | GXSN=Galv XH Seamless Nipple
+Nipple format: BXSN[size][length] e.g. BXSNDM=1/2x3 BLK XH NIP, BXSNDCL=1/2 CLOSE BLK XH NIP
+Bushing/RedCoup always need TWO size codes e.g. FSTBFD=3/4x1/2 BUSH, FSTRFD=3/4x1/2 RED COUP
+
+FAMILY CATEGORIES:
+GRFB/GRFW/GRFS/GRFT = Domestic CS Flanges (B=blind W=weld neck S=slip on T=threaded)
+GGLF/GGRF = Global (import) CS Flanges
+IS4/IS6 = Import Stainless Steel fittings`;
 
   if (PATTERNS) sys += `\n\nFITTING PATTERNS & VALIDATION RULES:\n${PATTERNS}`;
 
@@ -322,7 +352,7 @@ async function analyze() {
 
     lastResult = fullText.trim();
     streamRaw.classList.remove('cursor');
-    renderTable(lastResult);
+    await renderTable(lastResult);
     feedbackBar.classList.add('visible');
 
   } catch(e) {
@@ -337,25 +367,95 @@ async function analyze() {
   analyzeBtn.textContent = 'Analyze Quote \u2192';
 }
 
-function renderTable(raw) {
+async function renderTable(raw) {
   const lines = raw.split('\n').map(l=>l.trim()).filter(l=>l&&l.includes('|'));
   if (!lines.length) { streamRaw.classList.add('active'); return; }
   tableBody.innerHTML = '';
   let rows = 0;
+  let parsedRows = [];
+
   for (const line of lines) {
     if (/qty|part.?num|desc/i.test(line) && rows===0) continue;
     const cells = line.split('|').map(c=>c.trim());
     if (cells.length < 2) continue;
     const [qty, pn, ...rest] = cells;
-    const tr = document.createElement('tr');
-    const pnClass = pn.includes('NEED MORE INFO') ? 'td-pn need-info' :
-                    pn.includes('NOT FOUND') ? 'td-pn not-found' : 'td-pn';
-    tr.innerHTML = `<td class="td-qty">${esc(qty)}</td><td class="${pnClass}">${esc(pn)}</td><td class="td-desc">${esc(rest.join(' '))}</td>`;
-    tableBody.appendChild(tr);
+    parsedRows.push({qty, pn, desc: rest.join(' ')});
     rows++;
   }
-  if (rows) { streamRaw.classList.remove('active'); partsTable.style.display = 'table'; }
-  else streamRaw.classList.add('active');
+
+  if (!rows) { streamRaw.classList.add('active'); return; }
+
+  // Validate part numbers against catalog
+  const pnsToValidate = parsedRows
+    .filter(r => !r.pn.includes('NEED MORE INFO') && !r.pn.includes('NOT FOUND'))
+    .map(r => r.pn);
+
+  let validationMap = {};
+  if (pnsToValidate.length > 0) {
+    try {
+      const vRes = await fetch('/api/validate', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({parts: pnsToValidate})
+      });
+      if (vRes.ok) {
+        const vData = await vRes.json();
+        for (const r of vData.results) {
+          validationMap[r.pn] = r;
+        }
+      }
+    } catch(e) { console.warn('Validation failed:', e); }
+  }
+
+  // Render rows with validation status
+  let hasEst = false, hasInfo = false;
+  for (const row of parsedRows) {
+    const tr = document.createElement('tr');
+    let pnClass = 'td-pn';
+    let badge = '';
+    let rowClass = '';
+
+    if (row.pn.includes('NEED MORE INFO')) {
+      pnClass = 'td-pn need-info';
+      badge = '<span class="badge badge-info">NEED INFO</span>';
+      rowClass = 'row-need-info';
+      hasInfo = true;
+    } else if (row.pn.includes('NOT FOUND')) {
+      pnClass = 'td-pn not-found';
+      badge = '<span class="badge badge-est">ESTIMATED</span>';
+      rowClass = 'row-estimated';
+      hasEst = true;
+    } else if (row.pn.startsWith('EST:')) {
+      // Claude flagged this as a guess
+      row.pn = row.pn.replace('EST:', '');
+      pnClass = 'td-pn estimated';
+      badge = '<span class="badge badge-est">ESTIMATED</span>';
+      rowClass = 'row-estimated';
+      hasEst = true;
+    } else {
+      const v = validationMap[row.pn];
+      if (v) {
+        if (v.in_catalog) {
+          pnClass = 'td-pn';
+          badge = '<span class="badge badge-ok">CONFIRMED</span>';
+        } else {
+          // Not in catalog — treat as estimated
+          pnClass = 'td-pn estimated';
+          badge = '<span class="badge badge-est">ESTIMATED</span>';
+          rowClass = 'row-estimated';
+          hasEst = true;
+        }
+      }
+    }
+
+    if (rowClass) tr.classList.add(rowClass);
+    tr.innerHTML = `<td class="td-qty">${esc(row.qty)}</td><td class="${pnClass}">${esc(row.pn)}${badge}</td><td class="td-desc">${esc(row.desc)}</td>`;
+    tableBody.appendChild(tr);
+  }
+
+  streamRaw.classList.remove('active');
+  partsTable.style.display = 'table';
+  document.getElementById('legend').style.display = 'flex';
 }
 
 // Feedback
