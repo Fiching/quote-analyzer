@@ -253,7 +253,6 @@ def debug():
     return jsonify({"api_key_set": bool(API_KEY), "api_key_preview": masked, "model": MODEL})
 
 @app.route("/api/validate", methods=["POST"])
-@login_required
 def validate():
     """Validate and decode a list of part numbers."""
     data = request.get_json(silent=True) or {}

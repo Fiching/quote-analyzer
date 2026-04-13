@@ -391,6 +391,7 @@ async function renderTable(raw) {
     .map(r => r.pn);
 
   let validationMap = {};
+  console.log('Validating parts:', pnsToValidate);
   if (pnsToValidate.length > 0) {
     try {
       const vRes = await fetch('/api/validate', {
@@ -400,6 +401,7 @@ async function renderTable(raw) {
       });
       if (vRes.ok) {
         const vData = await vRes.json();
+        console.log('Validation results:', vData.results);
         for (const r of vData.results) {
           validationMap[r.pn] = r;
         }
