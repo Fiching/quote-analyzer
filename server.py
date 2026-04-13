@@ -191,11 +191,14 @@ BXSN=Black XH Seamless Nipple | GXSN=Galv XH Seamless Nipple
 Nipple: BXSN[size][length] e.g. BXSNDM=1/2x3" | BXSNDCL=1/2 CLOSE
 Bushing/RedCoup: always TWO size codes e.g. FSTBFD=3/4x1/2
 
-MISSING INFO RULES:
-- FS fitting with no THRD/SW specified → NEED MORE INFO: Threaded or socket weld?
-- Bushing with only one size → NEED MORE INFO: What is the reduction size?
-- Nipple with no length → NEED MORE INFO: What length? (or CLOSE?)
-- Any fitting with no size → NEED MORE INFO: What pipe size?
+MISSING INFO RULES - THESE ARE HARD RULES, NEVER SKIP THEM:
+- FS elbow/tee/coupling with NO explicit THRD, THREADED, SW, or SOCKET WELD in the request: ALWAYS output NEED MORE INFO for that line: "Threaded or socket weld?"
+- Bushing with only ONE size given: ALWAYS output NEED MORE INFO: "What is the reduction size? Bushing needs large x small (e.g. 3/4x1/2)"
+- Reducing coupling with only ONE size: ALWAYS output NEED MORE INFO: "What is the reduction size?"
+- Nipple with no length and no CLOSE: ALWAYS output NEED MORE INFO: "What length? Or is this a close nipple?"
+- Any fitting with no pipe size: ALWAYS output NEED MORE INFO: "What pipe size?"
+
+CRITICAL: NEVER assume THRD vs SW. NEVER assume the second size on a bushing. If not explicitly stated, flag it.
 
 Output nothing except the table. No explanation, no preamble."""
 
