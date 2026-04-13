@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quote Analyzer — Login</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'Courier New',monospace;
+    background:#0f0f11;
+    color:#e2e2e8;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .card{
+    background:#17171a;
+    border:1px solid #2a2a30;
+    border-radius:12px;
+    padding:40px 44px;
+    width:100%;
+    max-width:380px;
+    display:flex;
+    flex-direction:column;
+    gap:20px;
+  }
+  .brand{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#666}
+  h1{font-family:Georgia,serif;font-size:22px;font-weight:normal;color:#e2e2e8}
+  label{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:#888;display:block;margin-bottom:6px}
+  input[type=password]{
+    width:100%;
+    background:#1e1e22;
+    border:1px solid #2a2a30;
+    color:#e2e2e8;
+    font-family:'Courier New',monospace;
+    font-size:14px;
+    padding:10px 14px;
+    border-radius:8px;
+    outline:none;
+    transition:border-color .2s;
+  }
+  input[type=password]:focus{border-color:#7c6af7}
+  button{
+    background:#7c6af7;
+    border:none;
+    color:#fff;
+    font-family:'Courier New',monospace;
+    font-size:13px;
+    padding:12px;
+    border-radius:8px;
+    cursor:pointer;
+    width:100%;
+    transition:background .15s;
+    letter-spacing:.04em;
+  }
+  button:hover{background:#6a59e0}
+  button:active{transform:scale(.98)}
+  #err{
+    display:none;
+    background:#2a1010;
+    border:1px solid #5a2020;
+    color:#e07070;
+    font-size:12px;
+    padding:8px 12px;
+    border-radius:6px;
+    text-align:center;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <div>
+    <div class="brand">Industrial Pipe &amp; Fitting</div>
+    <h1>Quote Analyzer</h1>
+  </div>
+  <div>
+    <label for="pw">Password</label>
+    <input type="password" id="pw" placeholder="Enter password" autocomplete="current-password" />
+  </div>
+  <div id="err"></div>
+  <button id="btn">Sign in →</button>
+</div>
+<script>
+  const btn = document.getElementById('btn');
+  const pw  = document.getElementById('pw');
+  const err = document.getElementById('err');
+
+  async function login() {
+    err.style.display = 'none';
+    btn.textContent = 'Signing in...';
+    btn.disabled = true;
+    try {
+      const res = await fetch('/login', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({password: pw.value})
+      });
+      const data = await res.json();
+      if (data.ok) {
+        window.location.href = '/';
+      } else {
+        err.textContent = data.error || 'Wrong password';
+        err.style.display = 'block';
+        pw.value = '';
+        pw.focus();
+      }
+    } catch(e) {
+      err.textContent = 'Cannot reach server';
+      err.style.display = 'block';
+    }
+    btn.textContent = 'Sign in →';
+    btn.disabled = false;
+  }
+
+  btn.addEventListener('click', login);
+  pw.addEventListener('keydown', e => { if(e.key === 'Enter') login(); });
+  pw.focus();
+</script>
+</body>
+</html>

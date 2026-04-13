@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quote Analyzer</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#0f0f11;--surface:#17171a;--surface2:#1e1e22;--border:#2a2a30;
+    --text:#e2e2e8;--muted:#666;--accent:#7c6af7;--accent2:#5a49d6;
+    --green:#3ecf8e;--red:#e05252;--amber:#e8a945;
+    --radius:10px;--font:'Courier New',monospace
+  }
+  body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+  header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;gap:14px}
+  .brand{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  header h1{font-family:Georgia,serif;font-size:20px;font-weight:normal;flex:1}
+  .hdr-btn{background:transparent;border:1px solid var(--border);color:var(--muted);font-family:var(--font);font-size:11px;padding:5px 12px;border-radius:6px;cursor:pointer;transition:all .15s;position:relative}
+  .hdr-btn:hover{border-color:var(--accent);color:var(--accent)}
+  #logout-btn:hover{border-color:var(--red);color:var(--red)}
+  #ex-badge{position:absolute;top:-5px;right:-5px;background:var(--accent);color:#fff;font-size:9px;min-width:16px;height:16px;border-radius:8px;display:none;align-items:center;justify-content:center;padding:0 3px}
+  #ex-badge.on{display:flex}
+  main{flex:1;max-width:900px;width:100%;margin:0 auto;padding:30px 28px 60px;display:flex;flex-direction:column;gap:22px}
+  .section-label{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+  .input-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+  #quote-input{width:100%;min-height:130px;background:transparent;border:none;color:var(--text);font-family:var(--font);font-size:14px;padding:16px 18px;resize:vertical;outline:none;line-height:1.7}
+  #quote-input::placeholder{color:#2a2a30}
+  .input-footer{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-top:1px solid var(--border);background:var(--surface2);gap:10px;flex-wrap:wrap}
+  #char-count{font-size:11px;color:var(--muted)}
+  .btn{font-family:var(--font);font-size:12px;padding:8px 18px;border-radius:7px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text);transition:all .15s;white-space:nowrap}
+  .btn:hover{border-color:var(--accent);color:var(--accent)} .btn:active{transform:scale(.97)}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn.primary:hover{background:var(--accent2)}
+  .btn.primary:disabled{background:#2a2a30;border-color:#2a2a30;color:var(--muted);cursor:not-allowed;transform:none}
+  .btn.ghost{border-color:transparent;color:var(--muted);padding:8px 12px}
+  .btn.ghost:hover{color:var(--text);background:var(--surface2);border-color:var(--border)}
+  .btn.success{border-color:#1a5c35;color:var(--green)} .btn.success:hover{background:#0d2e1e}
+  .btn.danger{border-color:#5a2020;color:var(--red)} .btn.danger:hover{background:#2a1010}
+  #result-section{display:none;flex-direction:column} #result-section.visible{display:flex}
+  .result-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+  .result-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--surface2)}
+  .result-title{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  #stream-raw{padding:16px 18px;font-size:13px;color:var(--text);line-height:1.8;white-space:pre-wrap;display:none}
+  #stream-raw.active{display:block}
+  .cursor::after{content:'|';animation:blink .65s infinite;color:var(--muted)}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+  #parts-table{width:100%;border-collapse:collapse;font-size:13px}
+  #parts-table thead tr{background:var(--surface2);border-bottom:2px solid var(--border)}
+  #parts-table th{text-align:left;padding:10px 16px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:normal}
+  #parts-table td{padding:10px 16px;border-bottom:1px solid var(--border);vertical-align:top;line-height:1.5}
+  #parts-table tbody tr:last-child td{border-bottom:none}
+  #parts-table tbody tr:hover td{background:var(--surface2)}
+  .td-qty{font-weight:bold;color:var(--accent);width:60px}
+  .td-pn{color:var(--amber);white-space:nowrap}
+  .td-pn.need-info{color:var(--red)}
+  .td-pn.not-found{color:var(--muted)}
+  #feedback-bar{display:none;padding:10px 14px;border-top:1px solid var(--border);background:var(--surface2);gap:8px;align-items:center;flex-wrap:wrap}
+  #feedback-bar.visible{display:flex}
+  #feedback-label{font-size:11px;color:var(--muted)}
+  #correction-wrap{display:none;flex-direction:column;border-top:1px solid var(--border)}
+  #correction-wrap.visible{display:flex}
+  #correction-head{padding:8px 14px;font-size:10px;color:var(--amber);letter-spacing:.07em;text-transform:uppercase;border-bottom:1px solid var(--border);background:var(--surface2)}
+  #correction-input{background:var(--surface);border:none;color:var(--text);font-family:var(--font);font-size:12px;padding:12px 14px;resize:none;outline:none;width:100%;height:110px;line-height:1.7}
+  #correction-input::placeholder{color:#333}
+  #correction-actions{padding:8px 14px;border-top:1px solid var(--border);display:flex;gap:8px;background:var(--surface2)}
+  #status-bar{display:none;padding:10px 16px;font-size:12px;border-radius:var(--radius);margin-top:4px}
+  #status-bar.error{background:#2a1010;border:1px solid #5a2020;color:var(--red);display:block}
+  #overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:199} #overlay.on{display:block}
+  #training-drawer{position:fixed;top:0;right:-500px;width:480px;height:100vh;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;z-index:200;transition:right .25s ease}
+  #training-drawer.open{right:0}
+  #drawer-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface2)}
+  #drawer-title{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  #drawer-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;line-height:1;padding:0 4px} #drawer-close:hover{color:var(--text)}
+  #examples-list{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+  .ex-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+  .ex-head{padding:7px 12px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)}
+  .ex-num{font-size:10px;color:var(--accent);letter-spacing:.05em}
+  .ex-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;line-height:1;padding:0 2px} .ex-del:hover{color:var(--red)}
+  .ex-body{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px 12px}
+  .ex-col label{display:block;font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:3px}
+  .ex-col p{font-size:11px;color:var(--text);white-space:pre-wrap;word-break:break-word;line-height:1.5}
+  .no-ex{color:var(--muted);text-align:center;padding:40px 20px;font-size:12px;line-height:2.2}
+  #drawer-footer{padding:10px 18px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:var(--surface2)}
+  #ex-count-label{font-size:11px;color:var(--muted)}
+  #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(8px);background:var(--surface);border:1px solid var(--border);color:var(--green);padding:9px 20px;border-radius:8px;font-size:12px;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:300}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  @media(max-width:600px){header,main{padding-left:16px;padding-right:16px}#training-drawer{width:100%;right:-100%}}
+</style>
+</head>
+<body>
+<header>
+  <div><div class="brand">Industrial Pipe &amp; Fitting</div><h1>Quote Analyzer</h1></div>
+  <button class="hdr-btn" id="training-btn">Training <span id="ex-badge"></span></button>
+  <button class="hdr-btn" id="logout-btn">Sign out</button>
+</header>
+
+<main>
+  <div>
+    <div class="section-label">Quote Request</div>
+    <div class="input-box">
+      <textarea id="quote-input" placeholder="Paste the quote request here...&#10;&#10;Example: 10 ea 3/4x1/2 fs thrd bushing, 6 ea 1/2 close blk nipples, 4 ea 2 fs 90 ell"></textarea>
+      <div class="input-footer">
+        <span id="char-count">0 characters &nbsp;&middot;&nbsp; <span style="color:#333">Alt+Enter to analyze</span></span>
+        <div style="display:flex;gap:8px">
+          <button class="btn ghost" id="clear-btn">Clear</button>
+          <button class="btn primary" id="analyze-btn">Analyze Quote &rarr;</button>
+        </div>
+      </div>
+    </div>
+    <div id="status-bar"></div>
+  </div>
+
+  <div id="result-section">
+    <div class="section-label">Extracted Line Items</div>
+    <div class="result-box">
+      <div class="result-header">
+        <span class="result-title">Results</span>
+        <div style="display:flex;gap:6px">
+          <button class="btn ghost" id="copy-btn" style="font-size:11px;padding:5px 10px">Copy table</button>
+          <button class="btn ghost" id="new-btn" style="font-size:11px;padding:5px 10px">New quote</button>
+        </div>
+      </div>
+      <div>
+        <div id="stream-raw"></div>
+        <table id="parts-table" style="display:none">
+          <thead><tr><th>Qty</th><th>Part Number</th><th>Description</th></tr></thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+      <div id="feedback-bar">
+        <span id="feedback-label">Is this correct?</span>
+        <button class="btn success" id="correct-btn">&#10003; Yes &mdash; save as example</button>
+        <button class="btn danger" id="wrong-btn">&#10007; No &mdash; correct it</button>
+      </div>
+      <div id="correction-wrap">
+        <div id="correction-head">Paste the correct answer below</div>
+        <textarea id="correction-input" placeholder="10|FSTBFD|3/4X1/2 FS 3M-6M HEX THRD BUSH&#10;6|BXSNDCL|1/2XCLOSE BLK XH SMLS A106 NIP&#10;&#10;Format: QTY|PART_NUMBER|DESCRIPTION"></textarea>
+        <div id="correction-actions">
+          <button class="btn success" id="save-corr-btn">Save correction</button>
+          <button class="btn ghost" id="cancel-corr-btn">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="overlay"></div>
+<div id="training-drawer">
+  <div id="drawer-head">
+    <span id="drawer-title">Training Examples</span>
+    <button id="drawer-close">&times;</button>
+  </div>
+  <div id="examples-list"></div>
+  <div id="drawer-footer">
+    <span id="ex-count-label">0 examples</span>
+    <button class="btn danger" id="clear-ex-btn" style="font-size:11px;padding:5px 12px">Clear all</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+let CATALOG = '';
+let PATTERNS = '';
+let analyzing = false;
+let lastQuote = '';
+let lastResult = '';
+let examples = JSON.parse(localStorage.getItem('qa_examples') || '[]');
+
+function buildSystemPrompt() {
+  let sys = `You are a specialist parts quote analyzer for an industrial pipe and fitting supplier.
+
+OUTPUT FORMAT — return ONLY a pipe-delimited table, no header, no explanation, no extra text:
+QTY|PART_NUMBER|DESCRIPTION
+
+One line per item. Nothing else. No markdown, no preamble, no notes.
+
+CRITICAL RULES:
+- Use ONLY part numbers from the catalog — never invent one
+- Return ONLY items explicitly mentioned in the quote
+- If quantity not specified, default to 1
+- If required information is missing output: QTY|NEED MORE INFO|what is missing
+- If part cannot be matched but all info present output: QTY|NOT FOUND|customer description
+- Ignore any parts starting with SP-`;
+
+  if (PATTERNS) sys += `\n\nFITTING PATTERNS & VALIDATION RULES:\n${PATTERNS}`;
+
+  if (examples.length) {
+    sys += `\n\nTRAINING EXAMPLES — follow this exact logic:\n`;
+    examples.forEach((ex, i) => {
+      sys += `\nExample ${i+1}:\nInput: ${ex.quote}\nCorrect output:\n${ex.answer}\n`;
+    });
+  }
+
+  if (CATALOG) sys += `\n\nPARTS CATALOG:\n${CATALOG}`;
+  return sys;
+}
+
+// DOM
+const quoteInput     = document.getElementById('quote-input');
+const analyzeBtn     = document.getElementById('analyze-btn');
+const clearBtn       = document.getElementById('clear-btn');
+const charCount      = document.getElementById('char-count');
+const statusBar      = document.getElementById('status-bar');
+const resultSection  = document.getElementById('result-section');
+const streamRaw      = document.getElementById('stream-raw');
+const partsTable     = document.getElementById('parts-table');
+const tableBody      = document.getElementById('table-body');
+const copyBtn        = document.getElementById('copy-btn');
+const newBtn         = document.getElementById('new-btn');
+const logoutBtn      = document.getElementById('logout-btn');
+const feedbackBar    = document.getElementById('feedback-bar');
+const correctBtn     = document.getElementById('correct-btn');
+const wrongBtn       = document.getElementById('wrong-btn');
+const correctionWrap = document.getElementById('correction-wrap');
+const correctionInput= document.getElementById('correction-input');
+const saveCorrBtn    = document.getElementById('save-corr-btn');
+const cancelCorrBtn  = document.getElementById('cancel-corr-btn');
+const trainingBtn    = document.getElementById('training-btn');
+const exBadge        = document.getElementById('ex-badge');
+const overlay        = document.getElementById('overlay');
+const drawer         = document.getElementById('training-drawer');
+const drawerClose    = document.getElementById('drawer-close');
+const examplesList   = document.getElementById('examples-list');
+const exCountLabel   = document.getElementById('ex-count-label');
+const clearExBtn     = document.getElementById('clear-ex-btn');
+const toast          = document.getElementById('toast');
+
+// Init
+Promise.all([
+  fetch('/api/catalog').then(r=>r.json()).then(d=>{CATALOG=d.catalog||'';}).catch(()=>{}),
+  fetch('/api/patterns').then(r=>r.json()).then(d=>{PATTERNS=d.patterns||'';}).catch(()=>{})
+]);
+updateBadge();
+
+// Input
+quoteInput.addEventListener('input', () => {
+  const n = quoteInput.value.length;
+  charCount.childNodes[0].textContent = n + ' character' + (n!==1?'s':'') + ' \u00a0\u00b7\u00a0 ';
+});
+quoteInput.addEventListener('keydown', e => {
+  if (e.altKey && e.key === 'Enter') { e.preventDefault(); analyze(); }
+});
+clearBtn.addEventListener('click', reset);
+newBtn.addEventListener('click', reset);
+logoutBtn.addEventListener('click', async () => {
+  await fetch('/logout', {method:'POST'});
+  window.location.href = '/';
+});
+
+function reset() {
+  quoteInput.value = '';
+  charCount.childNodes[0].textContent = '0 characters \u00a0\u00b7\u00a0 ';
+  resultSection.classList.remove('visible');
+  feedbackBar.classList.remove('visible');
+  correctionWrap.classList.remove('visible');
+  statusBar.style.display = 'none';
+  quoteInput.focus();
+}
+
+// Analyze
+analyzeBtn.addEventListener('click', analyze);
+
+async function analyze() {
+  const quote = quoteInput.value.trim();
+  if (!quote || analyzing) return;
+
+  lastQuote = quote;
+  lastResult = '';
+  analyzing = true;
+  analyzeBtn.disabled = true;
+  analyzeBtn.textContent = 'Analyzing...';
+  statusBar.style.display = 'none';
+  feedbackBar.classList.remove('visible');
+  correctionWrap.classList.remove('visible');
+
+  resultSection.classList.add('visible');
+  partsTable.style.display = 'none';
+  tableBody.innerHTML = '';
+  streamRaw.textContent = '';
+  streamRaw.classList.add('active', 'cursor');
+
+  let fullText = '';
+
+  try {
+    const res = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        quote,
+        system_prompt: buildSystemPrompt()
+      })
+    });
+
+    if (res.status === 401) { window.location.href = '/'; return; }
+    if (!res.ok) throw new Error('Server error ' + res.status);
+
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      const chunk = dec.decode(value);
+      for (const line of chunk.split('\n')) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6).trim();
+        if (data === '[DONE]') break;
+        try {
+          const j = JSON.parse(data);
+          if (j.error) throw new Error(j.error);
+          if (j.text) {
+            fullText += j.text;
+            streamRaw.textContent = fullText;
+          }
+        } catch(pe) {
+          if (pe.message && !pe.message.includes('JSON')) throw pe;
+        }
+      }
+    }
+
+    lastResult = fullText.trim();
+    streamRaw.classList.remove('cursor');
+    renderTable(lastResult);
+    feedbackBar.classList.add('visible');
+
+  } catch(e) {
+    streamRaw.classList.remove('active', 'cursor');
+    statusBar.textContent = 'Error: ' + e.message;
+    statusBar.className = 'error';
+    statusBar.style.display = 'block';
+  }
+
+  analyzing = false;
+  analyzeBtn.disabled = false;
+  analyzeBtn.textContent = 'Analyze Quote \u2192';
+}
+
+function renderTable(raw) {
+  const lines = raw.split('\n').map(l=>l.trim()).filter(l=>l&&l.includes('|'));
+  if (!lines.length) { streamRaw.classList.add('active'); return; }
+  tableBody.innerHTML = '';
+  let rows = 0;
+  for (const line of lines) {
+    if (/qty|part.?num|desc/i.test(line) && rows===0) continue;
+    const cells = line.split('|').map(c=>c.trim());
+    if (cells.length < 2) continue;
+    const [qty, pn, ...rest] = cells;
+    const tr = document.createElement('tr');
+    const pnClass = pn.includes('NEED MORE INFO') ? 'td-pn need-info' :
+                    pn.includes('NOT FOUND') ? 'td-pn not-found' : 'td-pn';
+    tr.innerHTML = `<td class="td-qty">${esc(qty)}</td><td class="${pnClass}">${esc(pn)}</td><td class="td-desc">${esc(rest.join(' '))}</td>`;
+    tableBody.appendChild(tr);
+    rows++;
+  }
+  if (rows) { streamRaw.classList.remove('active'); partsTable.style.display = 'table'; }
+  else streamRaw.classList.add('active');
+}
+
+// Feedback
+correctBtn.addEventListener('click', () => {
+  if (!lastQuote || !lastResult) return;
+  saveExample(lastQuote, lastResult);
+  feedbackBar.classList.remove('visible');
+  showToast('Saved as training example!');
+});
+wrongBtn.addEventListener('click', () => {
+  correctionWrap.classList.add('visible');
+  feedbackBar.classList.remove('visible');
+  correctionInput.focus();
+});
+saveCorrBtn.addEventListener('click', () => {
+  const answer = correctionInput.value.trim();
+  if (!answer || !lastQuote) return;
+  saveExample(lastQuote, answer);
+  correctionWrap.classList.remove('visible');
+  correctionInput.value = '';
+  showToast('Correction saved!');
+});
+cancelCorrBtn.addEventListener('click', () => {
+  correctionWrap.classList.remove('visible');
+  correctionInput.value = '';
+  feedbackBar.classList.add('visible');
+});
+
+function saveExample(quote, answer) {
+  examples.push({quote, answer, ts: Date.now()});
+  localStorage.setItem('qa_examples', JSON.stringify(examples));
+  updateBadge();
+}
+function updateBadge() {
+  const n = examples.length;
+  exBadge.textContent = n;
+  exBadge.classList.toggle('on', n > 0);
+}
+
+// Training drawer
+trainingBtn.addEventListener('click', () => { renderExamples(); drawer.classList.add('open'); overlay.classList.add('on'); });
+drawerClose.addEventListener('click', closeDrawer);
+overlay.addEventListener('click', closeDrawer);
+function closeDrawer() { drawer.classList.remove('open'); overlay.classList.remove('on'); }
+
+function renderExamples() {
+  exCountLabel.textContent = examples.length + ' example' + (examples.length!==1?'s':'');
+  if (!examples.length) {
+    examplesList.innerHTML = '<div class="no-ex">No training examples yet.<br>Analyze a quote then mark it correct<br>or submit a correction.</div>';
+    return;
+  }
+  examplesList.innerHTML = examples.map((ex,i) => `
+    <div class="ex-card">
+      <div class="ex-head">
+        <span class="ex-num">EXAMPLE ${i+1} &nbsp;&middot;&nbsp; ${new Date(ex.ts).toLocaleDateString()}</span>
+        <button class="ex-del" data-i="${i}">\u2715</button>
+      </div>
+      <div class="ex-body">
+        <div class="ex-col"><label>Input</label><p>${esc(ex.quote)}</p></div>
+        <div class="ex-col"><label>Correct answer</label><p>${esc(ex.answer)}</p></div>
+      </div>
+    </div>`).join('');
+  examplesList.querySelectorAll('.ex-del').forEach(btn => {
+    btn.addEventListener('click', () => {
+      examples.splice(+btn.dataset.i, 1);
+      localStorage.setItem('qa_examples', JSON.stringify(examples));
+      updateBadge();
+      renderExamples();
+    });
+  });
+}
+clearExBtn.addEventListener('click', () => {
+  if (!examples.length || !confirm('Delete all training examples?')) return;
+  examples = [];
+  localStorage.setItem('qa_examples', JSON.stringify(examples));
+  updateBadge();
+  renderExamples();
+});
+
+// Copy
+copyBtn.addEventListener('click', () => {
+  const rows = [...tableBody.querySelectorAll('tr')].map(tr =>
+    [...tr.querySelectorAll('td')].map(td=>td.textContent).join('\t')
+  );
+  navigator.clipboard.writeText(['Qty\tPart Number\tDescription',...rows].join('\n'))
+    .then(() => showToast('Copied to clipboard'));
+});
+
+function showToast(msg) {
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2200);
+}
+function esc(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>

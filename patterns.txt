@@ -1,0 +1,303 @@
+# ============================================================
+# CLAUDE INJECTION — Quote Analyzer Pattern File
+# ============================================================
+# HOW TO USE:
+#   - Each PATTERN block defines a fitting type
+#   - REQUIRES = fields the AI must find in the quote
+#   - IF_MISSING = what to output in the table when a field is absent
+#   - SHORTHAND = common abbreviations customers use
+#   - ASSUME = safe default if not specified
+#   - EXAMPLES = real part numbers from your catalog
+#
+# HOW TO EDIT:
+#   - Add new patterns by copying an existing block
+#   - Add new shorthand lines as: customer_term = catalog_term
+#   - Add new examples as: PARTNUM = DESCRIPTION
+#   - Lines starting with # are comments and are ignored
+#   - Save the file and restart Flask — changes load automatically
+# ============================================================
+
+
+# ============================================================
+# MATERIALS
+# ============================================================
+# These are the material codes used in descriptions.
+# Add new ones as you encounter them.
+
+MATERIAL_CODES:
+  BLK     = Black (carbon steel, malleable iron)
+  GALV    = Galvanized steel
+  SS      = Stainless steel (generic)
+  SS304   = 304 Stainless steel
+  SS316   = 316 Stainless steel
+  BRZ     = Bronze
+  BRASS   = Brass
+  CI      = Cast iron
+  MI      = Malleable iron
+  CS      = Carbon steel
+  FS      = Forged steel
+  CPVC    = CPVC plastic
+  PVC     = PVC plastic
+
+
+# ============================================================
+# SCHEDULES & PRESSURE RATINGS
+# ============================================================
+
+SCHEDULE_CODES:
+  STD     = Standard weight
+  XH      = Extra heavy (same as Schedule 80)
+  XXH     = Double extra heavy
+  S160    = Schedule 160
+  3000#   = 3000 lb forged fitting
+  6000#   = 6000 lb forged fitting
+  2000#   = 2000 lb forged fitting
+  150#    = 150 lb class
+  300#    = 300 lb class
+  600#    = 600 lb class
+  800#    = 800 lb class
+  1500#   = 1500 lb class
+  2500#   = 2500 lb class
+  SMLS    = Seamless
+  ERW     = Electric resistance welded
+
+
+# ============================================================
+# CONNECTION TYPES
+# ============================================================
+
+CONNECTION_CODES:
+  THRD    = Threaded
+  SW      = Socket weld
+  BW      = Butt weld
+  TBE     = Threaded both ends
+  POE     = Plain one end
+  TOE     = Threaded one end
+  PXP     = Push x push (press fit)
+
+
+# ============================================================
+# FITTING TYPE PATTERNS
+# ============================================================
+
+PATTERN: nipple
+  DESCRIPTION: Short pipe section threaded on both ends
+  REQUIRES: size, length (or CLOSE for close nipple), material, schedule
+  IF_MISSING_SIZE: NEED MORE INFO — nipple requires a pipe size (e.g. 1/2, 3/4, 1)
+  IF_MISSING_LENGTH: NEED MORE INFO — nipple requires a length or CLOSE (e.g. 1/2x3, 1/2 CLOSE)
+  IF_MISSING_MATERIAL: NEED MORE INFO — nipple requires material (BLK, GALV, SS, etc.)
+  IF_MISSING_SCHEDULE: NEED MORE INFO — nipple requires schedule (XH, STD, S160, etc.)
+  ASSUME: if customer says "black nipple" assume BLK XH SMLS A106
+  ASSUME: if customer says "galv nipple" assume GALV STL
+  SHORTHAND:
+    nip = nipple
+    close = close nipple (NIPC)
+    blk = black (BLK XH SMLS A106)
+    galv = galvanized (GALV STL)
+    xh = extra heavy
+  SIZE_FORMAT: SIZE x LENGTH (e.g. 1/2x3, 3/4x6, 1-1/2x close)
+  CATALOG_EXAMPLES:
+    BXSNDCL = 1/2XCLOSE BLK XH SMLS A106 NIP
+    BXSNDM  = 1/2X3 BLK XH SMLS A106 NIP
+    BXSNFM  = 3/4X3 BLK XH SMLS A106 NIP
+    GNDJ    = 1/2X1-1/2 GALV STL NIP
+    BXSNJM  = 1-1/2X3 BLK XH SMLS A106 NIP
+
+
+PATTERN: elbow
+  DESCRIPTION: Fitting that changes direction of flow — 45 or 90 degrees
+  REQUIRES: size, angle (45 or 90), material, schedule/rating
+  IF_MISSING_SIZE: NEED MORE INFO — elbow requires a pipe size (e.g. 1/2, 3/4, 1)
+  IF_MISSING_ANGLE: NEED MORE INFO — elbow requires angle (45 or 90 degree)
+  IF_MISSING_MATERIAL: NEED MORE INFO — elbow requires material (BLK, GALV, SS, FS, etc.)
+  IF_MISSING_SCHEDULE: NEED MORE INFO — elbow requires schedule or rating (XH, 3000#, 150#, etc.)
+  SHORTHAND:
+    ell = elbow
+    90 = 90 degree elbow
+    45 = 45 degree elbow
+    fs 90 = forged steel 3000# threaded 90 elbow
+    fs 45 = forged steel 3000# threaded 45 elbow
+    blk 90 = black malleable iron 150# 90 elbow
+  CATALOG_EXAMPLES:
+    FST9K   = 2 FS 3000# THRD 90 ELL
+    FST9G   = 1 FS 3000# THRD 90 ELL
+    FST9D   = 1/2 FS 3000# THRD 90 ELL
+    FST4D   = 1/2 FS 3000# THRD 45 ELL
+    BCI9G   = 1 BLK CI 90 ELL
+    B9G     = 1 BLK MI 150# 90 ELL
+
+
+PATTERN: tee
+  DESCRIPTION: Fitting with three openings — one inlet two outlets
+  REQUIRES: size, material, schedule/rating
+  IF_MISSING_SIZE: NEED MORE INFO — tee requires a pipe size (e.g. 1/2, 3/4, 1)
+  IF_MISSING_MATERIAL: NEED MORE INFO — tee requires material (BLK, GALV, SS, FS, etc.)
+  IF_MISSING_SCHEDULE: NEED MORE INFO — tee requires schedule or rating (3000#, 150#, etc.)
+  SHORTHAND:
+    tee = tee fitting
+    fs tee = forged steel 3000# threaded tee
+    blk tee = black malleable iron 150# tee
+  CATALOG_EXAMPLES:
+    FSTTD   = 1/2 FS 3000# THRD TEE
+    FSTTG   = 1 FS 3000# THRD TEE
+    FSTTK   = 2 FS 3000# THRD TEE
+    IBTG    = 1 BLK MI 150# TEE
+
+
+PATTERN: bushing
+  DESCRIPTION: Reducer fitting — ALWAYS has two sizes (large x small)
+  REQUIRES: large_size, small_size, material, schedule/rating
+  IF_MISSING_LARGE_SIZE: NEED MORE INFO — bushing requires two sizes (e.g. 1x1/2, 3/4x1/2)
+  IF_MISSING_SMALL_SIZE: NEED MORE INFO — bushing requires a reduction size (e.g. 1x1/2 — what is the small end?)
+  IF_MISSING_MATERIAL: NEED MORE INFO — bushing requires material (BLK, GALV, SS, FS, etc.)
+  IF_MISSING_SCHEDULE: NEED MORE INFO — bushing requires schedule or rating (3000#, 150#, etc.)
+  SHORTHAND:
+    bush = bushing
+    hex bush = hex bushing
+    fs bush = forged steel 3000# hex threaded bushing
+  SIZE_FORMAT: LARGE_SIZE x SMALL_SIZE (e.g. 1x1/2, 2x1-1/2, 3/4x1/4)
+  CATALOG_EXAMPLES:
+    FSTBDB  = 1/2X1/4 FS 3M-6M HEX THRD BUSH
+    FSTBFD  = 3/4X1/2 FS 3M-6M HEX THRD BUSH
+    FSTBGD  = 1X1/2 FS 3M-6M HEX THRD BUSH
+    GCIBJD  = 1-1/2X1/2 GALV CI HEX BUSH
+    BSHBDB  = 1/2X1/4 BLK STL HEX BUSH
+
+
+PATTERN: coupling
+  DESCRIPTION: Connects two pipes of same or different size
+  REQUIRES: size, material, schedule/rating
+  IF_MISSING_SIZE: NEED MORE INFO — coupling requires a pipe size (e.g. 1/2, 3/4, 1)
+  IF_MISSING_MATERIAL: NEED MORE INFO — coupling requires material (BLK, GALV, FS, etc.)
+  IF_MISSING_SCHEDULE: NEED MORE INFO — coupling requires schedule or rating (3000#, 150#, etc.)
+  NOTE: reducing coupling requires two sizes — treat like bushing if two sizes given
+  SHORTHAND:
+    coup = coupling
+    red coup = reducing coupling
+    fs coup = forged steel 3000# threaded coupling
+  CATALOG_EXAMPLES:
+    FSTCG   = 1 FS 3000# THRD COUP
+    FSTCK   = 2 FS 3000# THRD COUP
+    FSTCD   = 1/2 FS 3000# THRD COUP
+    BCG     = 1 BLK MI 150# COUP
+    FSTRGD  = 1X1/2 FS 3000# THRD RED COUP
+
+
+PATTERN: union
+  DESCRIPTION: Allows disconnection without disassembly
+  REQUIRES: size, material, schedule/rating
+  IF_MISSING_SIZE: NEED MORE INFO — union requires a pipe size (e.g. 1/2, 3/4, 1)
+  IF_MISSING_MATERIAL: NEED MORE INFO — union requires material (BLK, FS, SS, etc.)
+  IF_MISSING_SCHEDULE: NEED MORE INFO — union requires schedule or rating (3000#, 300#, etc.)
+  SHORTHAND:
+    union = union fitting
+    fs union = forged steel 3000# threaded steel union
+  CATALOG_EXAMPLES:
+    FSTSSUD = 1/2 FS 3000# THRD STL UNION
+    FSTSSUG = 1 FS 3000# THRD STL STL UNION
+    BLF300UG = 1 BLK MI 300# BRS GJ UNION
+
+
+PATTERN: cap
+  DESCRIPTION: Closes off end of pipe
+  REQUIRES: size, material, schedule/rating
+  IF_MISSING_SIZE: NEED MORE INFO — cap requires a pipe size (e.g. 1/2, 3/4, 1)
+  IF_MISSING_MATERIAL: NEED MORE INFO — cap requires material (BLK, FS, SS, etc.)
+  SHORTHAND:
+    cap = threaded cap
+    fs cap = forged steel 3000# threaded cap
+  CATALOG_EXAMPLES:
+    FSTCAPD = 1/2 FS 3000# THRD CAP
+    FSTCAPG = 1 FS 3000# THRD CAP
+    FSTCAPK = 2 FS 3000# THRD CAP
+
+
+PATTERN: flange
+  DESCRIPTION: Flat plate fitting for bolted connections
+  REQUIRES: size, pressure_class, material, flange_type
+  IF_MISSING_SIZE: NEED MORE INFO — flange requires a pipe size (e.g. 1, 2, 4)
+  IF_MISSING_CLASS: NEED MORE INFO — flange requires pressure class (150#, 300#, 600#, etc.)
+  IF_MISSING_MATERIAL: NEED MORE INFO — flange requires material (CS, SS, BRZ, etc.)
+  IF_MISSING_TYPE: NEED MORE INFO — flange requires type (BLND=blind, WN=weld neck, SO=slip on, THD=threaded)
+  SHORTHAND:
+    blnd flg = blind flange
+    wn flg = weld neck flange
+    so flg = slip on flange
+    thd flg = threaded flange
+    ptfe = PTFE lined blind flange
+  CATALOG_EXAMPLES:
+    DRFBFG          = 1 CS 150# RF BLND FLG
+    R4000B0Z000100  = 1 150# CS PTFE BLND FLG
+    R4000B0Z000200  = 2 150# CS PTFE BLND FLG
+
+
+PATTERN: plug
+  DESCRIPTION: Closes off threaded opening
+  REQUIRES: size, material
+  IF_MISSING_SIZE: NEED MORE INFO — plug requires a pipe size
+  IF_MISSING_MATERIAL: NEED MORE INFO — plug requires material (BLK, GALV, SS, etc.)
+  SHORTHAND:
+    plug = threaded plug
+    sq hd plug = square head plug
+  CATALOG_EXAMPLES:
+    BCICPG  = 1 BLK CI CORED SQ HD PLUG
+    GCPD    = 1/2 GALV CI CORED PLUG
+    BSSPG   = 1 BLK STL SQ HD PLUG
+
+
+PATTERN: valve
+  DESCRIPTION: Controls flow through pipe
+  REQUIRES: size, material, pressure_rating, valve_type, end_connection
+  IF_MISSING_SIZE: NEED MORE INFO — valve requires a pipe size
+  IF_MISSING_TYPE: NEED MORE INFO — valve requires type (gate, ball, check, globe, butterfly, etc.)
+  IF_MISSING_MATERIAL: NEED MORE INFO — valve requires material (BRZ, SS, CI, CS, etc.)
+  IF_MISSING_END: NEED MORE INFO — valve requires end connection (THRD, SW, FLG, etc.)
+  SHORTHAND:
+    gate vlv = gate valve
+    ball vlv = ball valve
+    check vlv = check valve
+    globe vlv = globe valve
+  CATALOG_EXAMPLES:
+    P375J       = 1-1/2 BRZ 200# THRD RS GATE VLV
+    OF18108RFG  = 1 FS 150# RP BB RF T8 GATE VLV
+
+
+# ============================================================
+# GENERAL RULES
+# ============================================================
+
+GENERAL_RULES:
+  - If quantity is not specified, default to 1
+  - Always output ONLY the pipe-delimited table: QTY|PART_NUMBER|DESCRIPTION
+  - If a part cannot be matched AND all info is present, output: QTY|NOT FOUND|customer description
+  - If required info is missing for any line item, output: QTY|NEED MORE INFO|what is missing
+  - Never invent part numbers — only use exact part numbers from the catalog
+  - Ignore any parts starting with SP- (service/special order items)
+  - Size format in catalog: fractions use / (e.g. 1/2, 3/4, 1-1/2)
+
+
+# ============================================================
+# COMMON CUSTOMER SHORTHAND
+# ============================================================
+
+SHORTHAND_GLOBAL:
+  ea = each (quantity indicator, ignore)
+  pcs = pieces (quantity indicator, ignore)
+  pc = piece (quantity indicator, ignore)
+  " = inch
+  in = inch
+  fs = forged steel
+  blk = black
+  galv = galvanized
+  ss = stainless steel
+  thrd = threaded
+  sw = socket weld
+  nip = nipple
+  ell = elbow
+  coup = coupling
+  tee = tee
+  bush = bushing
+  flg = flange
+  vlv = valve
+  red = reducing
+  hex = hexagonal
