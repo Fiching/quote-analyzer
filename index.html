@@ -311,6 +311,50 @@ async function analyze() {
   streamRaw.textContent = '';
   streamRaw.classList.add('active', 'cursor');
 
+  // Split quote into individual line items and pre-validate each
+  const quoteLines = quote.split(/[,;\n]+/).map(l=>l.trim()).filter(Boolean);
+  let needInfoRows = [];
+  let cleanLines = [];
+
+  try {
+    const pvRes = await fetch('/api/prevalidate', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({lines: quoteLines})
+    });
+    if (pvRes.ok) {
+      const pvData = await pvRes.json();
+      for (const r of pvData.results) {
+        if (r.validation && r.validation.status === 'need_info') {
+          needInfoRows.push({qty:'?', pn:'NEED MORE INFO', desc: r.validation.question + ' [from: "' + r.line + '"]'});
+        } else {
+          cleanLines.push(r.line);
+        }
+      }
+    } else {
+      cleanLines = quoteLines;
+    }
+  } catch(e) {
+    console.warn('Pre-validation failed:', e);
+    cleanLines = quoteLines;
+  }
+
+  // If everything needs info, skip Claude entirely
+  if (cleanLines.length === 0 && needInfoRows.length > 0) {
+    streamRaw.classList.remove('active','cursor');
+    const fakeTable = needInfoRows.map(r => r.qty+'|'+r.pn+'|'+r.desc).join('\n');
+    lastResult = fakeTable;
+    await renderTable(fakeTable);
+    feedbackBar.classList.add('visible');
+    analyzing = false;
+    analyzeBtn.disabled = false;
+    analyzeBtn.textContent = 'Analyze Quote \u2192';
+    return;
+  }
+
+  // Build the quote to send to Claude (only complete lines)
+  const cleanQuote = cleanLines.join(', ');
+
   let fullText = '';
 
   try {
@@ -318,7 +362,7 @@ async function analyze() {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
-        quote,
+        quote: cleanQuote,
         system_prompt: buildSystemPrompt()
       })
     });
@@ -352,6 +396,11 @@ async function analyze() {
 
     lastResult = fullText.trim();
     streamRaw.classList.remove('cursor');
+    // Prepend any NEED MORE INFO rows from pre-validation
+    if (needInfoRows.length > 0) {
+      const needInfoText = needInfoRows.map(r => r.qty+'|'+r.pn+'|'+r.desc).join('\n');
+      lastResult = needInfoText + (lastResult ? '\n' + lastResult : '');
+    }
     await renderTable(lastResult);
     feedbackBar.classList.add('visible');
 
