@@ -22,7 +22,7 @@ from datetime import timedelta
 PASSWORD   = os.environ.get("APP_PASSWORD", "changeme123")
 SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key-change-in-production")
 API_KEY    = os.environ.get("ANTHROPIC_API_KEY", "")
-MODEL      = "claude-haiku-4-5"   # fast + cheap, perfect for this task
+MODEL = "claude-haiku-4-5-20251001"  
 PORT       = int(os.environ.get("PORT", 5000))
 # ─────────────────────────────────────────────────────────────────────────────
 
