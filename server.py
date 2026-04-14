@@ -187,13 +187,19 @@ HARD RULES - no exceptions, no assumptions:
 4. Reducing coupling with only ONE size: NEED MORE INFO|Reduction size needed
 5. Nipple with no length and no CLOSE: NEED MORE INFO|Length needed (e.g. 3" or CLOSE for close nipple)
 6. Nipple with no pipe size: NEED MORE INFO|Pipe size needed
-7. Nipple schedule/wall rules:
-   - If XH, EXTRA HEAVY, or X-HEAVY explicitly stated: use BXSN series, mark CONFIRMED if in catalog
-   - If S40, STD, or STANDARD explicitly stated: use BSN series, mark CONFIRMED if in catalog
-   - If S160 explicitly stated: use appropriate S160 series, mark CONFIRMED if in catalog
-   - If NO schedule stated: assume S40/STD, use BSN series, mark EST: prefix (ESTIMATED - schedule not specified, assumed S40)
-8. Default rating to 3000# for FS fittings unless stated otherwise
-9. Default qty to 1 if not stated
+7. Nipple schedule/wall rules - CRITICAL:
+   - XH, EXTRA HEAVY, or X-HEAVY explicitly in request: use BXSN (black) or GXSN (galv), mark CONFIRMED
+   - S40, STD, STANDARD explicitly in request: use BSN series, mark CONFIRMED
+   - S160 explicitly in request: use S160 series, mark CONFIRMED
+   - "BLK" or "BLACK" alone with NO schedule word: output EST:BXSNDCL style with note "schedule not specified, assumed XH" - NEVER output plain BXSN as CONFIRMED without explicit XH
+   - "GALV" alone with NO schedule: output EST: with note "schedule not specified"
+   - NO schedule mentioned at all: ALWAYS mark EST: - schedule must be explicitly stated to be CONFIRMED
+8. Bushing material rules - CRITICAL:
+   - If NO material stated (no FS, forged, BLK MI, GALV CI, SS, etc.): output NEED MORE INFO|Material needed (FS forged steel? BLK MI malleable iron? GALV CI?)
+   - If material IS stated but missing reduction size: output NEED MORE INFO|Reduction size needed
+   - If BOTH material AND both sizes missing: output NEED MORE INFO|Material needed AND reduction size needed (large x small)
+9. Default rating to 3000# for FS fittings unless stated otherwise
+10. Default qty to 1 if not stated
 
 PART NUMBER STRUCTURE:
 FST=Forged Steel Threaded 3000# | FSS=Forged Steel Socket Weld 3000# | FS6=FS SW 6000#
@@ -205,13 +211,16 @@ Bushing: always TWO sizes e.g. FSTBFD=3/4x1/2
 
 EXAMPLE OUTPUT for "10 ea 2 fs 90, 6 ea bushing 3/4, 4 ea 1/2 close blk nipples":
 10|NEED MORE INFO|2 FS 90 ELL - Threaded or socket weld?
-6|NEED MORE INFO|Bushing 3/4 - Material needed (FS, BLK MI, GALV CI?) AND reduction size needed (what is small end?)
-4|EST:BSNDCL|1/2XCLOSE BLK S40 SMLS A106 NIP - schedule not specified, assumed S40
+6|NEED MORE INFO|Bushing 3/4 - Material needed (FS forged steel? BLK MI malleable iron? GALV CI?) AND reduction size needed (what is small end?)
+4|EST:BXSNDCL|1/2XCLOSE BLK XH SMLS A106 NIP - schedule not specified, assumed XH
 
 EXAMPLE OUTPUT for "10 ea 2 fs thrd 90, 6 ea 3/4x1/2 fs thrd bushing, 4 ea 1/2 close blk xh nipples":
 10|FST9K|2 FS 3000# THRD 90 ELL
 6|FSTBFD|3/4X1/2 FS 3M-6M HEX THRD BUSH
-4|BXSNDCL|1/2XCLOSE BLK XH SMLS A106 NIP"""
+4|BXSNDCL|1/2XCLOSE BLK XH SMLS A106 NIP
+
+EXAMPLE OUTPUT for "4 ea 1/2 close std nipples":
+4|EST:BSNDCL|1/2XCLOSE BLK S40 SMLS A106 NIP - S40/standard assumed"""
 
 # ── AUTH ──────────────────────────────────────────────────────────────────────
 def login_required(f):
