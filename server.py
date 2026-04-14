@@ -181,13 +181,19 @@ FOR EVERY LINE ITEM you must call the lookup_part tool first, then output one of
 - QTY|NOT FOUND|customer description  (no match possible)
 
 HARD RULES - no exceptions, no assumptions:
-1. If connection type (threaded vs socket weld) is NOT explicitly stated: output NEED MORE INFO|Threaded or socket weld?
-2. If bushing has only ONE size: output NEED MORE INFO|Reduction size needed (e.g. 3/4x1/2 - what is small end?)
-3. If reducing coupling has only ONE size: output NEED MORE INFO|Reduction size needed
-4. If nipple has no length and no CLOSE: output NEED MORE INFO|Length needed (e.g. 3" or CLOSE)
-5. If no pipe size given: output NEED MORE INFO|Pipe size needed
-6. Default rating to 3000# for FS fittings unless stated otherwise
-7. Default qty to 1 if not stated
+1. FS fitting with NO explicit THRD, THREADED, SW, or SOCKET WELD stated: NEED MORE INFO|Threaded or socket weld?
+2. Bushing with only ONE size: NEED MORE INFO|Reduction size needed (e.g. 3/4x1/2 - what is small end?)
+3. Bushing with NO material stated (FS, BLK MI, GALV CI, SS, etc.): NEED MORE INFO|Material needed (FS forged steel, BLK MI malleable iron, GALV CI, etc.)
+4. Reducing coupling with only ONE size: NEED MORE INFO|Reduction size needed
+5. Nipple with no length and no CLOSE: NEED MORE INFO|Length needed (e.g. 3" or CLOSE for close nipple)
+6. Nipple with no pipe size: NEED MORE INFO|Pipe size needed
+7. Nipple schedule/wall rules:
+   - If XH, EXTRA HEAVY, or X-HEAVY explicitly stated: use BXSN series, mark CONFIRMED if in catalog
+   - If S40, STD, or STANDARD explicitly stated: use BSN series, mark CONFIRMED if in catalog
+   - If S160 explicitly stated: use appropriate S160 series, mark CONFIRMED if in catalog
+   - If NO schedule stated: assume S40/STD, use BSN series, mark EST: prefix (ESTIMATED - schedule not specified, assumed S40)
+8. Default rating to 3000# for FS fittings unless stated otherwise
+9. Default qty to 1 if not stated
 
 PART NUMBER STRUCTURE:
 FST=Forged Steel Threaded 3000# | FSS=Forged Steel Socket Weld 3000# | FS6=FS SW 6000#
@@ -199,7 +205,12 @@ Bushing: always TWO sizes e.g. FSTBFD=3/4x1/2
 
 EXAMPLE OUTPUT for "10 ea 2 fs 90, 6 ea bushing 3/4, 4 ea 1/2 close blk nipples":
 10|NEED MORE INFO|2 FS 90 ELL - Threaded or socket weld?
-6|NEED MORE INFO|Bushing 3/4 - Reduction size needed (what is small end?)
+6|NEED MORE INFO|Bushing 3/4 - Material needed (FS, BLK MI, GALV CI?) AND reduction size needed (what is small end?)
+4|EST:BSNDCL|1/2XCLOSE BLK S40 SMLS A106 NIP - schedule not specified, assumed S40
+
+EXAMPLE OUTPUT for "10 ea 2 fs thrd 90, 6 ea 3/4x1/2 fs thrd bushing, 4 ea 1/2 close blk xh nipples":
+10|FST9K|2 FS 3000# THRD 90 ELL
+6|FSTBFD|3/4X1/2 FS 3M-6M HEX THRD BUSH
 4|BXSNDCL|1/2XCLOSE BLK XH SMLS A106 NIP"""
 
 # ── AUTH ──────────────────────────────────────────────────────────────────────
@@ -297,9 +308,11 @@ def analyze():
 
     def generate():
         try:
-            # Agentic tool use loop
             full_text = ""
-            while True:
+            loop_count = 0
+
+            while loop_count < 5:
+                loop_count += 1
                 response = client.messages.create(
                     model=MODEL,
                     max_tokens=2048,
@@ -308,7 +321,6 @@ def analyze():
                     messages=messages
                 )
 
-                # Process tool calls
                 tool_calls_made = False
                 tool_results = []
 
@@ -332,21 +344,35 @@ def analyze():
                         full_text += block.text
 
                 if tool_calls_made:
-                    # Add assistant response and tool results to messages
                     messages.append({"role": "assistant", "content": response.content})
                     messages.append({"role": "user", "content": tool_results})
-                    # Stream progress indicator
-                    yield f"data: {json.dumps({'text': ''})}\n\n"
+                    yield f"data: {json.dumps({'text': ''})}" + "\n\n"
                 else:
-                    # No more tool calls — stream the final text
-                    for char in full_text:
-                        yield f"data: {json.dumps({'text': char})}\n\n"
                     break
+
+            # If Claude chatted instead of outputting a table, force reformat
+            if full_text.strip() and "|" not in full_text:
+                messages.append({"role": "assistant", "content": full_text})
+                messages.append({"role": "user", "content": [{"type": "text", "text": "Output ONLY the pipe-delimited table now. Format: QTY|PART_NUMBER|DESCRIPTION. For missing info: QTY|NEED MORE INFO|what is missing. Nothing else. Start with row 1 now."}]})
+                response2 = client.messages.create(
+                    model=MODEL,
+                    max_tokens=1024,
+                    system=sys_prompt_parts,
+                    messages=messages
+                )
+                full_text = ""
+                for block in response2.content:
+                    if block.type == "text":
+                        full_text += block.text
+
+            for char in full_text:
+                yield f"data: {json.dumps({'text': char})}" + "\n\n"
 
             yield "data: [DONE]\n\n"
 
         except Exception as e:
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            yield f"data: {json.dumps({'error': str(e)})}" + "\n\n"
+
 
     return Response(
         stream_with_context(generate()),
